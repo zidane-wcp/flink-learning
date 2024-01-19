@@ -20,6 +20,8 @@ public class ControlStream {
                 .fromElements("Apache", "DROP", "Flink", "IGNORE")
                 .keyBy(x -> x);
 
+        streamOfWords.iterate();
+
         control
                 .connect(streamOfWords)
                 .flatMap(new ControlFunction())

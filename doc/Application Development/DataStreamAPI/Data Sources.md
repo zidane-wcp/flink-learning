@@ -4,7 +4,7 @@ Flink提供了一些预先实现好的`source function`，你也可以通过实�
 
 ## Flink predefined sources
 
-在`StreamExecutionEnvironment`类中，Flink提供了一些预先定义好的source。包括基于文件的、基于socket的、基于集合的以及Flink自定义的。
+在`StreamExecutionEnvironment`类中，Flink提供了一些预先定义好的source。包括基于文件的、基于socket的、基于集合的以及Flink自定义的。以下只列出四种了，另外还包括`generateSequence` `fromSequence`等等，后续补充。
 
 ### File-base
 
