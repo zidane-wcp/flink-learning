@@ -45,10 +45,11 @@ public class ReadTextFile {
         // to building Flink applications.
         final StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment();
 
+        // 注意，readTextFile默认是处理一次，不会连续监听文件变化，具体看底层调用
         DataStream<String> lines = env.readTextFile(
                 "file://" +
                         System.getProperty("user.dir") +
-                        "/source/src/main/java/sourcefunction/datafile/readTextFile.csv");
+                        "/code/source/src/main/java/org/wcp/flink/sourcefunction/datafile/readTextFile.csv");
 
         lines.print("===>>>");
 
