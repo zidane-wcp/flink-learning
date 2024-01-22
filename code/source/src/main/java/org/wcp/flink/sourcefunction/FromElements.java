@@ -20,6 +20,7 @@ package org.wcp.flink.sourcefunction;
 
 import org.apache.flink.streaming.api.datastream.DataStream;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
+import org.wcp.flink.sourcefunction.pojotype.Person;
 
 /**
  * Skeleton for a Flink DataStream Job.
@@ -51,18 +52,18 @@ public class FromElements {
 		env.execute("Flink Java API Skeleton");
 	}
 
-	public static class Person {
-		public String name;
-		public Integer age;
-		public Person() {}
-
-		public Person(String name, Integer age) {
-			this.name = name;
-			this.age = age;
-		}
-
-		public String toString() {
-			return this.name.toString() + ": age " + this.age.toString();
-		}
-	}
+//	public static class Person {
+//		public String name;
+//		public Integer age;
+//		public Person() {}
+//
+//		public Person(String name, Integer age) {
+//			this.name = name;
+//			this.age = age;
+//		}
+//
+//		public String toString() {
+//			return this.name.toString() + ": age " + this.age.toString();
+//		}
+//	}
 }

@@ -29,7 +29,6 @@ import org.wcp.flink.sourcefunction.customsource.pojotype.EnrichedRide;
 import org.wcp.flink.sourcefunction.customsource.pojotype.TaxiRide;
 
 public class RideFlatMapFunctionJob {
-
     public static void main(String[] args) throws Exception {
 
         StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment();
