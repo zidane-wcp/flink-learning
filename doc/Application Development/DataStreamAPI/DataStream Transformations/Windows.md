@@ -460,6 +460,23 @@ per-window state就是以上的第二种窗口的状态。这意味着，如果�
 
 当使用windowed state时，当窗口被清理掉时，也要清理掉窗口的状态，可以通过`clear()`方法实现。
 
+> `ProcessWindowFunction`中的状态分析。
+>
+> * `ProcessWindowFunction`是一个抽象类，定义如下：
+>
+>     ```java
+>     abstract class ProcessWindowFunction[IN, OUT, KEY, W <: Window]
+>         extends AbstractRichFunction {...}
+>     ```
+>
+>     可以发现它是继承自`AbstractRichFunction`抽象类，该抽象类是*rich*的，所以其具有`getRuntimeContext() `方法，可以来获取状态：`getRuntimeContext().getState()`，这是一种状态。
+>
+> * 而在`ProcessWindowFunction`中的`process()`方法中，还有个`Context`类型的参数，`Context`类是`ProcessWindowFunction`的内部类，其中有两个方法可以用来访问状态：`public abstract KeyedStateStore windowState();`和`public abstract KeyedStateStore globalState();`
+>
+> 对于以上三种访问状态的方式，其中`getRuntimeContext().getState()`与`ProcessWindowFunction.Context`中的`globalState()`是等价的，他俩返回的都是全局状态（global state，Flink源码中也叫做per-key state），该状态在具有相同key的所有窗口之间共享。而`ProcessWindowFunction.Context`中的`windowState()`返回的是per-window状态，该状态根据key进行隔离，即使是相同的key。
+>
+> 
+
 ### WindowFunction (Legacy)
 
 `WindowFunction`是`ProcessWindowFunction`的老版本，用`ProcessWindowFunction`的地方可以用`WindowFunction`替换。`WindowFunction`提供了较少的上下文元数据信息，并且不支持某些高级特性，比如per-window keyed state。该接口在未来的版本中将废弃。
@@ -493,27 +510,246 @@ input
     .apply(new MyWindowFunction());
 ```
 
+## Triggers
 
+窗口触发器（Triggers）决定了窗口（由窗口分配器创建）何时应用窗口函数。每个窗口分配器都有一个默认的触发器，如果默认的触发器不满足需求，也可以使用`trigger(...)`方法指定自定义的触发器。
 
+`Trigger`抽象类有五个方法，允许触发器对不同的事件作出反应：
 
+* `onElement()`，对于每个元素都会调用一次，将元素添加到窗口中。
+* `onEventTime()`，当基于event-time的定时器触发时，会调用该方法。
+* `onProcessingTime()`，当基于processing-time的定时器触发时，会调用该方法。
+* `onMerge()`，与有状态触发器（stateful triggers）相关，并在两个触发器对应的窗口合并时，合并它们的状态（trigger state）。但是在该方法执行之前，会先调用`Trigger`中的`canMerge()`方法以确定该触发器是否支持触发器状态的合并，比如会话窗口（sessinon window）在窗口合并时，其触发器状态就是支持合并的。
+* `clear()`，当该触发器对应的窗口被移除时，会调用该方法，用以清除该触发器持有的状态数据。
 
+以上方法有两点需要注意：
 
+1. 前三个方法会返回一个`TriggerResult`枚举对象，该对象决定了窗口将会发生什么，例如是应该调用窗口函数，还是应该丢失该窗口。对窗口有以下几种处理方式（也是`TriggerResult`枚举的成员）：
+    * `CONTINUE`，什么都不做
+    * `FIRE`，触发窗口计算（窗口函数），并发送出计算结果。但是该窗口不会被清除，其中的元素将被保留。
+    * `PURGE`，清理掉窗口内所有元素，并丢失该窗口，不会触发窗口函数，也不会发出任何元素。
+    * `FIRE_AND_PURGE`，触发窗口函数，然后清理掉窗口中所有元素。
+2. 这三个方法都可以用于注册基于processing-time和基于event-time的定时器（`Timer`）。
 
+### Fire and Purge
 
+一旦触发器确定窗口已经准备好进行处理，则触发器就会进行触发。触发器触发后，将返回一个`TriggerResult`枚举对象，`FIRE`或者`FIRE_AND_PURGE`。这是窗口算子（window operator）发出当前窗口结果的信号。对于`ProcessWindowFunction`，所有窗口中的元素都要经过该窗口函数进行处理（可能是在将它们传递给驱逐器之后）；对于`ReduceFunction`和`AggregateFunction`只是将其之前的聚合结果发送出去（因为这俩是增量聚合）。
 
+若触发器触发时返回的是`FIRE`枚举对象，则窗口在应用窗口函数后，将保留窗口中的元素；若触发器触发时返回的是`FIRE_AND_PURGE`枚举对象，则窗口在应用窗口函数后，将清除窗口中的元素。默认情况下，Flink内置的窗口触发器在触发时，都会返回`FIRE`枚举对象，不会清理窗口状态。
 
+> 清除（Purging）只是移除窗口中的内容，但是关于窗口和触发器状态的潜在元数据信息将会保留。
 
+### Default Triggers of WindowAssigners
 
+窗口分配器（`WindowAssigner`）中默认的窗口触发器（`Trigger`）可以适用于很多的场景。
 
+所有的基于event-time的窗口分配器都将`EventTimeTrigger`作为默认的触发器，一旦水位线（watermark）超过了窗口的结束时间，触发器就会触发。
 
+`GlobalWindow`分配器的默认触发器是`NeverTrigger`，这意味着永远不会触发。因此，当你使用`GlobalWindow`分配器是，你可以使用自定义的触发器。
 
+通过`trigger(...)`方法指定触发器后，将会覆盖`WindowAssigner`中默认的触发器。例如，你为`TumblingEventTimeWindow`指定了`CountTrigger`触发器，窗口的触发将基于count，而不再基于时间进度（progress of time）。如果你既想基于时间进度进行触发，又想基于count进行触发，则你需要实现自定的触发器。
 
+### Built-in and Custom Triggers
 
+Flink内置了几个触发器：
 
+* `EventTimeTrigger`，基于event-time的处理进度进行触发，其触发衡量标准是watermark是否超过了窗口的结束时间。
+* `ProcessingTimeTrigger`，基于processing-time，其他与上述类似。
+* `CountTrigger`，当窗口中的元素超过给定的上限后，就会触发。
+* `PurgingTrigger`，接受另一个`Trigger`类型的参数，并将其转换为*purge*类型。
 
+如果你需要实现一个自定义触发器，你可以通过继承抽象类`Trigger`实现。请注意，API仍在发展中，可能会在Flink的未来版本中发生变化。
 
+## Evictors
 
+除了窗口分配器、窗口触发器、窗口函数外，Flink的window模型还还可指定可选的驱逐器（Evictor），可以通过`evictor(...)`方法指定。驱逐器主要用来遍历窗口中的元素列表，并决定哪些元素需要移除、哪些元素需要保留，若没有驱逐器，所有元素都将保留。驱逐器可以在窗口触发器触发后、窗口函数执行之前或之后清理掉窗口中的元素。`Evictor`接口有两个方法：
 
+```java
+/**
+ * Optionally evicts elements. Called before windowing function.
+ *
+ * @param elements The elements currently in the pane.
+ * @param size The current number of elements in the pane.
+ * @param window The {@link Window}
+ * @param evictorContext The context for the Evictor
+ */
+void evictBefore(Iterable<TimestampedValue<T>> elements, int size, W window, EvictorContext evictorContext);
 
+/**
+ * Optionally evicts elements. Called after windowing function.
+ *
+ * @param elements The elements currently in the pane.
+ * @param size The current number of elements in the pane.
+ * @param window The {@link Window}
+ * @param evictorContext The context for the Evictor
+ */
+void evictAfter(Iterable<TimestampedValue<T>> elements, int size, W window, EvictorContext evictorContext);
+```
 
+`evictBefore()`方法用在窗口函数执行之前，`evictAfter()`用在窗口函数执行之后。如果在窗口函数执行之前驱逐元素，则窗口函数不会处理这些被驱逐的元素。
+
+Flink中的内置驱逐器：
+
+* `CountEvictor`，以元素计数为标准，决定元素是否删除。最多保留窗口中用户指定数量的元素，并丢弃窗口缓冲区开头的剩余元素。源码如下：
+
+    ```java
+        private void evict(Iterable<TimestampedValue<Object>> elements, int size, EvictorContext ctx) {
+            if (size <= maxCount) {
+                return;
+            } else {
+                int evictedCount = 0;
+                for (Iterator<TimestampedValue<Object>> iterator = elements.iterator();
+                        iterator.hasNext(); ) {
+                    iterator.next();
+                    evictedCount++;
+                    if (evictedCount > size - maxCount) {
+                        break;
+                    } else {
+                        iterator.remove();
+                    }
+                }
+            }
+        }
+    ```
+
+* `DeltaEvictor`，需要传入`DeltaFunction`和`double threshold`（一个计算函数，一个阈值），然后遍历每个元素，计算每个元素与列表中最后一个元素的delta值，若该值大于等于传入的threshold，则移除该元素。源码如下：
+
+    ```java
+        private void evict(Iterable<TimestampedValue<T>> elements, int size, EvictorContext ctx) {
+            TimestampedValue<T> lastElement = Iterables.getLast(elements);
+            for (Iterator<TimestampedValue<T>> iterator = elements.iterator(); iterator.hasNext(); ) {
+                TimestampedValue<T> element = iterator.next();
+                if (deltaFunction.getDelta(element.getValue(), lastElement.getValue())
+                        >= this.threshold) {
+                    iterator.remove();
+                }
+            }
+        }
+    ```
+
+    
+
+* `TimeEvictor`，以时间为判断标准，决定元素是否删除。其接受一个windowSize的参数，然后获取当前窗口中所有元素的最大时间戳max_ts（类似于`TimeWindow`中的结束时间），然后max_ts减去windowsize，得到min_ts（类似于`TimeWindow`的开始时间），然后遍历窗口中的所有元素，不在min_ts和max_ts之前的元素全部移除。源码如下：
+
+    ```java
+        private void evict(Iterable<TimestampedValue<Object>> elements, int size, EvictorContext ctx) {
+            if (!hasTimestamp(elements)) {
+                return;
+            }
+    
+            long currentTime = getMaxTimestamp(elements);
+            long evictCutoff = currentTime - windowSize;
+    
+            for (Iterator<TimestampedValue<Object>> iterator = elements.iterator();
+                    iterator.hasNext(); ) {
+                TimestampedValue<Object> record = iterator.next();
+                if (record.getTimestamp() <= evictCutoff) {
+                    iterator.remove();
+                }
+            }
+        }
+    ```
+
+默认情况下，如果我们不指定在窗口函数之前还是在窗口函数之后，所有的内置驱逐器都会在应用窗口函数之前进行应用。看源码验证：
+```java
+// 以CountEvictor为例
+    public static <W extends Window> CountEvictor<W> of(long maxCount) {
+        return new CountEvictor<>(maxCount);
+    }
+
+    private CountEvictor(long count) {
+        this.maxCount = count;
+        // 默认在窗口函数之前
+        this.doEvictAfter = false;
+    }
+```
+
+> 指定驱逐器可以防止预聚合（pre-aggregation），因为窗口中的所有元素在应用窗口函数之前要先经过驱逐器。这意味着拥有驱逐器的窗口将创建更多的状态。
+
+Flink不保证窗口中元素的顺序，这意味着，尽管驱逐器可以从窗口的开头移除元素，但这些元素不一定是最先到达或最后到达的元素。
+
+## Allowed Lateness
+
+当使用event-time窗口时，元素有可能会延迟到达，即Flink用于跟踪事件时间进度的水印已经超过元素所属窗口的结束时间戳。
+
+默认情况下，当watermark超过窗口结束时间时，迟到的元素将会被删掉，但是Flink允许为窗口算子指定允许的最大迟到时间（Allowed Lateness），Allowed Lateness指定了元素在被丢弃之前允许的迟到的时间，其默认值为0，在这个时间点之前到达的元素仍会被添加到其所属的窗口中。对于有些触发器来说，Allowed Lateness会导致那些迟到但未删除的元素可能会使得窗户再次启动，比如`EventTimeTrigger`触发器。
+
+为了实现Allowed Lateness机制，Flink一直保存窗口的状态（哪怕触发器已经触发），直到Allowed Lateness也已经过期。一旦Allowed Lateness过期，Flink将会彻底移除窗口实例及其状态，正如Window Lifecycle小节中所说。
+
+```java
+DataStream<T> input = ...;
+
+input
+    .keyBy(<key selector>)
+    .window(<window assigner>)
+    .allowedLateness(<time>)
+    .<windowed transformation>(<window function>);
+```
+
+当使用`GlobalWindow`窗口分配器时，因为窗口的结束时间为`Long.MAX_VALUE`，所以所有的元素都不会迟到。
+
+### Getting late data as a side output
+
+使用Flink中的旁路输出（side output）特性，我们可以获得迟到的被丢弃数据的数据流。代码示例如下：
+
+```java
+final OutputTag<T> lateOutputTag = new OutputTag<T>("late-data"){};
+
+DataStream<T> input = ...;
+
+SingleOutputStreamOperator<T> result = input
+    .keyBy(<key selector>)
+    .window(<window assigner>)
+    .allowedLateness(<time>)
+    .sideOutputLateData(lateOutputTag)
+    .<windowed transformation>(<window function>);
+
+DataStream<T> lateStream = result.getSideOutput(lateOutputTag);
+```
+
+### Late elements considerations
+
+当指定Allowed Lateness大于0时，在watermark超过窗口结束时间后，该窗口实例及其内容都会继续保存。这时，当一个迟到但没删除的元素到达时，可能导致窗口的再次触发，这些迟到的触发称为`late firing`，因为他们是被迟到的时间触发的，与其第一次触发形成对比。对于会话窗口来说，延迟触发可能会进一步导致窗口合并，因为迟到的事件可能正好位于两个之前存在的、还未合并的窗口之间的`gap`之中，使其gap小于指定的最大gap值，就会导致这两个窗口的merge。
+
+由late firing发出的结果应该作为之前结果的更新。意思是说，如果你的数据流包含了同一个窗口函数的多次计算的结果，根据你的应用程序，你需要将这些重复的结果考虑在内，或者是对他们进行去重。
+
+## Working with window results
+
+开窗操作的输出结果仍然是一个`DataStream`。关于开窗操作的相关信息不会保存在结果数据流的元素中，所以如果你想保存窗口的元数据信息，你需要在`ProcessWindowFunction`中，将相关信息编码到输出结果的元素中。结果元素中唯一的窗口信息是元素的时间戳，该时间戳被设置为该窗口的允许处理的最大时间戳，即`TimeWindow.getEnd()-1`，因为`TimeWindow.getEnd()`时间戳会被排除在窗口可处理的时间戳之外。需要注意的是，这对于event-time窗口和processing-time窗口都生效。即，在经过开窗操作后，所有的输出元素都将有一个时间戳，可能是event-time时间戳，也可能是processing-time时间戳。对于processing-time窗口来说这没什么特别的，但是对于event-time窗口来说，加上水印与窗口的交互方式，可以实现具有相同窗口大小的连续窗口操作。
+
+### Interaction of watermarks and windows
+
+当watermark到达窗口算子时，将会触发两个动作：
+
+* 若窗口的最大时间戳（`getEnd()-1`）小于该watermark，则该watermark会触发窗口计算。
+* watermark按照原样转发给下游算子。
+
+Intuitively, a watermark “flushes” out any windows that would be considered late in downstream operations once they receive that watermark.
+
+### Consecutive windowed operations
+
+如前面所说，开窗结果时间戳的计算方式以及watermark与窗口的交互方式允许将连续的开窗操作串在一起。这在以下场景中很有用：当你想要执行两个连续的开窗操作，并且这两个开窗要使用不同的key，而且还希望来自同一上游窗口的元素最终会出现在同一下游窗口中。如下示例所示：
+
+```java
+DataStream<Integer> input = ...;
+
+DataStream<Integer> resultsPerKey = input
+    .keyBy(<key selector>)
+    .window(TumblingEventTimeWindows.of(Time.seconds(5)))
+    .reduce(new Summer());
+
+DataStream<Integer> globalResults = resultsPerKey
+    .windowAll(TumblingEventTimeWindows.of(Time.seconds(5)))
+    .process(new TopKWindowFunction());
+```
+
+上述示例中，第一次操作的时间窗口[0，5）的结果也将在随后的窗口操作中的时间窗口[0，5）中结束。这可以在第一个窗口操作中计算每个key的sum值，并在第二个窗口操作中计算同一窗口内的top k个元素。
+
+## Useful state size considerations
+
+窗口可以定义为很长的时间段，例如一条、一周甚至一个月，因此会累积很大的状态。关于窗口计算中的状态你需要清楚以下几点：
+
+1. Flink为每个元素所属的窗口创建一个副本。基于此可知，滚动窗口会保留每个元素的一个副本，因为滚动窗口不会重叠，所以一个元素只属于一个窗口。除非它被延迟删除。相反，滑动窗口可能会保存元素的多个副本。因此，窗口大小为1天步长为1秒的滑动窗口可不是个好主意。
+2. `ReduceFunction`和`AggregateFunction`可以有效的减少状态存储的需求，因为它们是增量聚合，每个窗口只需要保存一个元素（即聚合中间结果）。相反，`ProcessWindowFunction`需要在状态中保存所有的元素。
+3. 若使用了驱逐器（`Evictor`），将会阻止任何的预聚合，因为窗口中的元素在计算之前，必须先在驱逐器中遍历。
 
