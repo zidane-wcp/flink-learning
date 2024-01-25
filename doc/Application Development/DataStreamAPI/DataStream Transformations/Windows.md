@@ -1,8 +1,10 @@
 ## Overview
 
-窗口（Window）是无界流处理的核心。窗口将无界的流分割成具有有限大小的“桶”，在这之上我们可以做计算和处理。本节介绍Flink中如何使用窗口。
+> 本章内容中的窗口函数的源码位于[org.apache.flink.streaming.api.functions.windowing](https://github.com/apache/flink/tree/master/flink-streaming-java/src/main/java/org/apache/flink/streaming/api/functions/windowing)包中，其他源码都位于[org.apache.flink.streaming.api.windowing](https://github.com/apache/flink/tree/master/flink-streaming-java/src/main/java/org/apache/flink/streaming/api/windowing)包中。
 
-窗口化Flink程序的一般结构如下所示。第一段说的是keyed stream，`window()`只能应用在`KeyedStream`上，所以先对流进行keyby操作，生成KeyedStream，然后做window操作。第二段说的是non-keyed stream，可以作用在`DataSteam`上，但是开窗时需要用`windowAll()`方法。
+窗口（Window）是无界流处理的核心，它将无界的流分割成具有有限大小的“桶”，在这之上我们可以做计算和处理。本节介绍Flink中的窗口计算。
+
+Flink中窗口计算程序的结构大概如下所示。可以看到，Flink的窗口计算既可以应用在`KeyedStream`上，也可以应用在`DataStream`上，但是开窗时需要调用不同的方法，前者需要调用`window(...)`方法， 而后者需要调用`windowAll()`方法。
 
 **Keyed Windows**
 
@@ -33,9 +35,9 @@ stream
 
 ## Window Lifecycle
 
-简而言之，一旦应该属于该窗口的第一个元素到达，就会创建一个窗口。当时间（event time或processing time）超过窗口的结束时间+用户指定的延迟时间（Allowed Lateness）时，窗口将会完全移除。Flink仅保证删除基于时间的窗口，而不保证删除其他类型的窗口，比如global windows。例如，想要每5分钟创建一个基于event time的非重叠的窗口（就是滑动窗口 tumbling window），并允许1分钟的延迟，对于12：00到12：05的这个窗口来说，当属于该时间范围的第一个元素达到时，该窗口就会被创建，当水位线（watermark）超过12:06时，该窗口就会被移除。
+简而言之，一旦应该属于该窗口的第一个元素到达，就会创建一个窗口。当时间（event-time或processing-time）超过窗口的结束时间+用户指定的延迟时间（Allowed Lateness）时，窗口将会完全移除。Flink仅保证删除基于时间的窗口，而不保证删除其他类型的窗口，比如global window（Flink中只有两种窗口类型，`TimeWindow`和`GlobalWindow`）。例如，创建一个大小为5分钟、基于event time的非重叠的窗口（就是滑动窗口 tumbling window），并允许1分钟的延迟，对于12：00到12：05的这个窗口来说，当属于该时间范围的第一个元素达到时，该窗口就会被创建，当水位线（watermark）超过12:06时，该窗口就会被移除。
 
-此外，每个窗口还将附加一个触发器（Trigger）、一个窗口函数（Window Function）（比如 `ProcessWindowFunction`, `ReduceFunction`,  `AggregateFunction`等）。窗口函数指定了要在窗口内的数据做的计算或处理，而触发器则指定了应用该窗口函数的触发条件，即何时触发窗口函数的计算。窗口的触发策略可能类似于“当窗口中的元素数量超过4时”，或“当水位线经过窗口末尾时”。触发器还可以决定在创建和删除窗口之间的任何时间清楚窗口的数据，此处的清除只清除窗口内的元素，而不会清除窗口的元数据。这意味着新的数据仍然可以进入该窗口。
+此外，每个窗口还将附加一个触发器（Trigger）、一个窗口函数（Window Function）（比如 `ProcessWindowFunction`, `ReduceFunction`,  `AggregateFunction`等）。窗口函数指定了要在窗口内的数据做的计算或处理，而触发器则指定了应用该窗口函数的触发条件，即何时触发窗口函数的计算。窗口的触发策略可能类似于“当窗口中的元素数量超过4时”，或“当watermark经过窗口末尾时”。触发器还可以决定在创建和删除窗口之间的任何时间清除窗口的数据，此处的清除只清除窗口内的元素，而不会清除窗口的元数据。这意味着新的数据仍然可以进入该窗口。
 
 另外，你还可以指定一个驱逐器（Evictor），它能在窗口触发后，而且应用窗口函数之前或之后的时间范围内，删除窗口内的元素。
 
@@ -52,9 +54,11 @@ stream
 
 对于窗口操作，首先要确定数据流是不是`KeyedStream`。使用`keyBy()`算子可以将无界数据流分割成逻辑上分组的数据流（`KeyedStream`）。
 
-对于keyed stream来说，输入事件的每个属性（字段）都可以作为key（keyBy()中指定）。`KeyedStream`允许在多个执行线程上并行的进行窗口计算，因为每一个逻辑keyedStream都可以独立于其他的KeyedStream进行处理，但是所有具有相同key的元素会在同一个并发task中处理。
+对于keyed stream来说，输入事件的每个属性或字段都可以作为key（`keyBy()`中指定）。`KeyedStream`允许在多个执行线程上并行的进行窗口计算，因为每一个拥有不同key的逻辑keyedStream都可以独立于其他的KeyedStream进行处理，但是所有具有相同key的元素会在同一个并发task中处理。
 
 对于non-keyed stream来说，初始数据流不会被分割成逻辑的数据流，所有的窗口计算在同一个task上执行，就像并发度为1一样。
+
+## Window Operators(待补充)
 
 ## Window Assigners
 
@@ -64,11 +68,19 @@ stream
 public <W extends Window> WindowedStream<T, KEY, W> window(WindowAssigner<? super T, W> assigner)
 ```
 
-Flink内置的窗口分配器适用于大多数场景，内置分配器有*tumbling windows、sliding windows、session windows、global windows*。你也可以继承`WindowAssigner`类实现一个自定义的窗口分配器。所有的内置分配器（除了global windows）都是基于时间向窗口分配数据，可以是processing time，也可以是event time。
+Flink内置的窗口分配器可以适用于大多数场景，包括*tumbling windows、sliding windows、session windows、global windows*。你也可以继承`WindowAssigner`类实现一个自定义的窗口分配器。
 
-Flink源码中的TimeWindow类是基于时间窗口的实现类，其有*start*和*end*两个属性，表示窗口的开始时间和结束时间，另外也提供了查询开始时间和结束时间的方法`getStart()、getEnd()`，以及`axTimestamp()`，用以返回窗口内允许的最大时间戳（该方法返回值为end-1）。
+>  Flink中有两种类型的窗口，一种是`TimeWindow`，另一种是`GlobalWindow`。
+>
+> `TimeWindow`是基于时间的，可以是processing-time，也可以是event-time，其有*start*和*end*两个属性，表示窗口的开始时间和结束时间（左闭右开区间），另外也提供了查询开始时间和结束时间的方法`getStart()、getEnd()`，以及`maxTimestamp()`，用以返回窗口内允许的最大时间戳，其返回值为end-1，所以窗口的时间范围是[start, end)，左闭右开区间。
+>
+> 而`GlobalWindow`是一种全局窗口，其`maxTimestamp()`方法返回值为`Long.MAX_VALUE`，也就是说这种窗口没有结束时间。
+
+其中，前三种窗口分配器都是基于时间向窗口分配数据，其分配数据的窗口也必须是`TimeWindow`类型，而时间可以是processing-time，也可以是event-time。第四种global windows是全局窗口分配器，其分配数据的窗口必须是`GlobalWindow`类型。
 
 ### Tumbling Windows
+
+> 有两个实现类：`TumblingEventTimeWindows`和`TumblingProcessingTimeWindows`。
 
 滑动窗口分配器（tumbling windows assigner）将元素分配给具有指定大小的窗口，滑动窗口的大小是固定的，且不会互相重合。比如，如果指定了一个5分钟的滑动窗口，则将评估当前窗口，并每5分钟创建一个新的窗口，如下图所示。
 
@@ -102,7 +114,9 @@ input
 
 ### Sliding Windows
 
-滑动窗口分配器（sliding windows assigner）将元素分配到固定大小的窗口内。类似于滚动窗口，可以配置窗口的大小。滑动窗口另一个参数是窗口滑动步长（window slide），用于控制滑动窗口启动的频率。因此，如果滑动步长小于窗口大小，则滑动窗口就会重叠，这时元素就会分配给多个窗口。
+> 有两个实现类：`SlidingEventTimeWindows`和`SlidingProcessingTimeWindows`。
+
+滑动窗口分配器（sliding windows assigner）将元素分配到固定大小的窗口内。类似于滚动窗口，可以配置窗口的大小。滑动窗口另一个参数是窗口滑动步长（window slide），用于控制滑动窗口启动的频率。因此，如果滑动步长小于窗口大小，则滑动窗口就会重叠，这时元素就会分配给多个窗口。而如果窗口大小等于步长，则会得到一个滚动窗口，滚动窗口是滑动窗口的一种特殊情况。
 
 例如，某个滑动窗口大小为10分钟，步长为5分钟，这样每5分钟就会得到一个窗口，包含过去10分钟内的事件，如下图所示。
 
@@ -135,6 +149,8 @@ input
 滑动窗口分配器同样接受可选参数`offset`，也是用来控制窗口的对齐方式。例如，窗口大小为1小时，步长为30分钟，不设置offset，则会得到如下窗口`1:00:00.000 - 1:59:59.999`、`1:30:00.000 - 2:29:59.999`等等。而如果设置offset为15分钟，则会得到如下窗口`1:15:00.000 - 2:14:59.999`、`1:45:00.000 - 2:44:59.999`等等。offset一个很重要的使用场景是将窗口调整为UTC-0以外的时区，比如在UTC+8时区，你必须指定offset。
 
 ### Session Windows
+
+> 有四个实现类：`DynamicEventTimeSessionWindows`、`DynamicProcessingTimeSessionWindows`、`EventTimeSessionWindows`、`ProcessingTimeSessionWindows`。
 
 会话窗口分配器（session windows assigner）会按照活跃的会话对元素进行分组。与滚动窗口与滑动窗口相比，会话窗口不会重叠，也不会有固定的开始和结束时间。相反，当会话窗口在一个时间段内没有接收到元素时（即当发生不活跃间隙时），窗口就会关闭。会话窗口分配器可以配置静态会话间隙，也可以配置为会话间隙提取器，它将定义非活跃间隙的时长，当该时长到期时，当前会话将关闭，后续元素将分配给新的会话窗口。
 
@@ -178,7 +194,9 @@ input
 
 ### Global Windows
 
-全局窗口分配器（global windows assigner）将具有相同key的所有元素分配到同一个全局窗口内。因为全局窗口没有结束时间，只能通过自定义窗口触发器触发计算，所以必须为全局窗口指定自定义窗口触发器。
+> 有一个实现类：`GlobalWindows`。
+
+全局窗口分配器（global windows assigner）将具有相同key的所有元素分配到同一个全局窗口内。因为全局窗口没有结束时间，而且其默认触发器为`NeverTrigger`，所以若想在`GlobalWindow`窗口上触发计算，必须指定自定义的触发器。
 
 ![global windows](/Users/wcp/DBA-Database/My-Obsidian/markdown图片/non-windowed-5978343.svg)
 
@@ -193,15 +211,19 @@ input
 
 ## Window Functions
 
-在定义了窗口分配器（window assigner）后，我们需要指定要在每个窗口上执行的计算。这就是窗口函数（window function）的职责，一旦系统确定窗口已经准备好进行计算，该喊出就应用在窗口中的每个元素上（其中，触发器决定了一个窗口何时准备好）。
+在指定了窗口分配器（window assigner）后，接下来需要指定要在每个窗口上执行的计算。这就是窗口函数（window function）的职责，一旦系统确定窗口已经准备好进行计算，该函数就应用在窗口中的每个元素上（其中，触发器决定了一个窗口何时准备好）。
 
-窗口函数可以是`ReduceFunction、AggregateFunction、ProcessWindowFunction`。前两个执行效率更高，因为Flink可以对窗口内每个到达元素进行增量聚合。而`ProcessWindowFunction`会获取每个窗口内所有元素的迭代器（会对窗口内所有元素进行一次全量计算）以及元素所属窗口的额外元数据信息。
+窗口函数可以是`ReduceFunction、AggregateFunction、ProcessWindowFunction`。前两个执行效率更高，因为其对窗口内每个到达的元素进行增量聚合。而`ProcessWindowFunction`会获取每个窗口内所有元素的迭代器（会对窗口内所有元素进行一次全量计算）以及元素所属窗口的额外元数据信息。
 
-使用`ProcessWindowFunction`的窗口算子不能像其他窗口函数那样高效地执行，因为Flink在调用窗口函数之前必须在内部缓冲窗口内的所有元素。而如果我们将`ProcessWindowFunction`与`ReduceFuncton、AggregateFunction`进行组合，我们既可以获得窗口元素的增量聚合能力，又可以得到`ProcessWindowFunction`的窗口元数据信息。
+使用`ProcessWindowFunction`的窗口算子不能像其他窗口函数那样高效地执行，因为Flink在调用窗口函数之前必须在内部缓冲窗口内的所有元素。而如果我们将`ProcessWindowFunction`与`ReduceFuncton、AggregateFunction`进行组合，我们既可以获得窗口元素的增量聚合能力，又可以得到`ProcessWindowFunction`中的窗口元数据信息。
 
 ### ReduceFunction
 
-`ReduceFunction`定义了两个输入元素进行组合，并生成一个具有相同类型的输出元素。Flink通过`ReduceFunction`实现了窗口内元素的增量聚合。
+`ReduceFunction`需要通过`WindowedStream.reduce()`方法来指定，该窗口函数定义了两个具有相同数据类型的输入元素进行组合，并生成一个具有相同数据类型的输出元素。
+
+Flink通过`ReduceFunction`实现了窗口内元素的增量聚合，其底层实现是将中间“合并的结果”作为状态保存起来，之后每来一个新的数据，就和之前的聚合状态进一步做归约，所以其窗口状态数据量可以非常小。缺点是能实现的功能比较有限，因为其中间状态的数据类型、输入类型、输出类型三者必须一致，而且窗口中只保存了一个中间状态数据，无法对窗口内所有数据进行操作。
+
+以下程序示例对窗口内元素的第二个字段进行累加。
 
 ```java
 DataStream<Tuple2<String, Long>> input = ...;
@@ -216,13 +238,18 @@ input
     });
 ```
 
-以上的程序示例对窗口内元素的第二个字段进行累加。`ReduceFunction`的底层实现，实际上是将中间“合并的结果”作为状态保存起来，之后每来一个新的数据，就和之前的聚合状态进一步做归约。 
-
 ### AggregateFunction
 
-`AggregateFunction`是`ReduceFunction`的通用版本，它有三种参数类型：一个输入类型（IN）、一个累加器类型（ accumulator type，ACC）、以及一个输出类型（OUT）。输入类型是输入流中元素的类型，AggregateFunction具有将一个输入元素添加到累加器的方法。该接口还有另外几个方法：创建初始累加器的方法、将两个累加器合并为一个累加器的方法、从累加器中抽取输出（OUT）的方法。
+`AggregateFunction`接口也是一个基于中间计算结果状态进行增量计算的窗口函数，通过`aggregate()`方法来指定。`AggregateFunction`比`ReduceFunction`更加通用，它有三种参数类型：一个输入类型（IN）、一个累加器类型（ accumulator type，ACC）、以及一个输出类型（OUT）。输入类型是输入流中元素的类型，AggregateFunction具有将一个输入元素添加到累加器的方法。该接口还有另外几个方法：创建初始累加器的方法、将两个累加器合并为一个累加器的方法、从累加器中抽取输出（OUT）的方法。
 
-与`ReduceFunction`一样，Flink也是对窗口中的元素进行增量聚合。
+该接口中有四个方法：
+
+* `ACC createAccumulator()`，创建初始累加器，要进行一些初始化的工作，比如我们要进行count计数操作，就需要给累加器一个初始值。
+* `ACC add(IN var1, ACC var2)`，该方法用来定义做聚合时的核心逻辑，对窗口中新到来的元素与当前累加器进行聚合，然后返回聚合后的累加器。
+* `OUT getResult(ACC var1)`，对累加器进行适当处理后，按照输出`OUT`的类型进行返回，返回的就是窗口聚合计算的结果。
+* `ACC merge(ACC var1, ACC var2)`，按照合适的逻辑，合并两个累加器，并返回相同的累加器类型。由于Flink是一个分布式计算框架，计算可以分布在不同的节点上进行。例如上述`add()`方法可能在不同的节点上被调用，该方法只会对当前节点的数据进行聚合，那么当执行`getResult()`方法时，就需要对各个节点的累加器进行合并，否则结果就是局部的、不正确的。
+
+以下示例展示如何用`AggregateFunction`计算平均值，其中，`accumulator.f0`存储数据流中的Long类型数据之和，`accumulator.f1`存储数据流中元素的个数。
 
 ```java
 
@@ -263,7 +290,7 @@ input
 
 ### ProcessWindowFunction
 
-`ProcessWindowFunction`中可以获取包含窗口中所有元素的迭代器，以及一个`Context`对象，该对象可以用来访问时间和状态信息，这使得`ProcessWindowFunction`比其他窗口函数更加灵活。这是以性能和资源消耗为代价的，因为窗口中的元素不能增量聚合，反而需要进行缓存，直到窗口触发器出发窗口函数的计算。
+`ProcessWindowFunction`通过`process()`方法来指定，其可以获取包含窗口中所有元素的迭代器，以及一个`Context`对象，该对象可以用来访问时间和状态信息，这使得`ProcessWindowFunction`比其他窗口函数更加灵活。这是以性能和资源消耗为代价的，因为窗口中的元素不能增量聚合，反而需要缓存所有元素，直到窗口触发器触发窗口函数的计算。
 
 以下代码段为`ProcessWindowFunction`抽象类的源码。
 
@@ -346,8 +373,6 @@ public class MyProcessWindowFunction
 }
 ```
 
-注意，使用`ProcessWindowFunction`进行类似于count的聚合是很低效的。下一小节将对`ReduceFunction、AggregateFunction`和`ProcessWindowFunction`进行组合，这样既可以做到元素的增量聚合，又可以在`ProcessWindowFunction`中获取更多元数据信息。
-
 ### ProcessWindowFunction with Incremental Aggregation
 
 使用`ProcessWindowFunction`进行类似于count的聚合是很低效的。如果把`ReduceFunction、AggregateFunction`和`ProcessWindowFunction`进行组合，这样既可以做到元素的增量聚合，又可以在`ProcessWindowFunction`中获取更多元数据信息。
@@ -356,7 +381,7 @@ public class MyProcessWindowFunction
 
 #### Incremental Window Aggregation with ReduceFunction
 
-以下示例展示了如何将增量ReduceFunction与ProcessWindowFunction组合，以返回窗口中最小的事件以及窗口的开始时间。
+以下示例展示了如何将增量ReduceFunction与ProcessWindowFunction组合，将ReduceFunction的输出作为ProcessWindowFunction的输入，以返回窗口中最小的事件以及窗口的开始时间。
 
 ```java
 DataStream<SensorReading> input = ...;
@@ -390,7 +415,7 @@ private static class MyProcessWindowFunction
 
 #### Incremental Window Aggregation with AggregateFunction
 
-以下示例显示了如何将增量AggregateFunction与ProcessWindowFunction组合以计算平均值，并将键和窗口与平均值一起发出。
+以下示例显示了如何将增量AggregateFunction与ProcessWindowFunction组合，将AggregateFunction的输出作为ProcessWindowFunction的输入，以计算平均值，并将key和窗口与平均值一起发出。
 
 ```java
 DataStream<Tuple2<String, Long>> input = ...;
@@ -398,6 +423,7 @@ DataStream<Tuple2<String, Long>> input = ...;
 input
   .keyBy(<key selector>)
   .window(<window assigner>)
+    // AggregateFunction的输出作为ProcessWindowFunction的输入
   .aggregate(new AverageAggregate(), new MyProcessWindowFunction());
 
 // Function definitions
@@ -516,7 +542,7 @@ input
 
 `Trigger`抽象类有五个方法，允许触发器对不同的事件作出反应：
 
-* `onElement()`，对于每个元素都会调用一次，将元素添加到窗口中。
+* `onElement()`，当每个元素被分配到窗口中时，该方法都会被调用一次。例如在`EventTimeTrigger`触发器中，该方法判断若是watermark超过了当前窗口的结束时间，则返回`TriggerResult.FIRE`，否则返回`TriggerResult.CONTINUE`。
 * `onEventTime()`，当基于event-time的定时器触发时，会调用该方法。
 * `onProcessingTime()`，当基于processing-time的定时器触发时，会调用该方法。
 * `onMerge()`，与有状态触发器（stateful triggers）相关，并在两个触发器对应的窗口合并时，合并它们的状态（trigger state）。但是在该方法执行之前，会先调用`Trigger`中的`canMerge()`方法以确定该触发器是否支持触发器状态的合并，比如会话窗口（sessinon window）在窗口合并时，其触发器状态就是支持合并的。
@@ -524,7 +550,7 @@ input
 
 以上方法有两点需要注意：
 
-1. 前三个方法会返回一个`TriggerResult`枚举对象，该对象决定了窗口将会发生什么，例如是应该调用窗口函数，还是应该丢失该窗口。对窗口有以下几种处理方式（也是`TriggerResult`枚举的成员）：
+1. 前三个方法会返回一个`TriggerResult`枚举对象，该对象决定了窗口将会发生什么，例如是应该调用窗口函数，还是应该清除窗口中的元素、并丢弃该窗口。对窗口有以下几种处理方式（也是`TriggerResult`枚举的成员）：
     * `CONTINUE`，什么都不做
     * `FIRE`，触发窗口计算（窗口函数），并发送出计算结果。但是该窗口不会被清除，其中的元素将被保留。
     * `PURGE`，清理掉窗口内所有元素，并丢失该窗口，不会触发窗口函数，也不会发出任何元素。
@@ -545,7 +571,7 @@ input
 
 所有的基于event-time的窗口分配器都将`EventTimeTrigger`作为默认的触发器，一旦水位线（watermark）超过了窗口的结束时间，触发器就会触发。
 
-`GlobalWindow`分配器的默认触发器是`NeverTrigger`，这意味着永远不会触发。因此，当你使用`GlobalWindow`分配器是，你可以使用自定义的触发器。
+`GlobalWindows`分配器的默认触发器是`NeverTrigger`，这意味着永远不会触发。因此，当你使用`GlobalWindows`分配器时，你可以使用自定义的触发器。
 
 通过`trigger(...)`方法指定触发器后，将会覆盖`WindowAssigner`中默认的触发器。例如，你为`TumblingEventTimeWindow`指定了`CountTrigger`触发器，窗口的触发将基于count，而不再基于时间进度（progress of time）。如果你既想基于时间进度进行触发，又想基于count进行触发，则你需要实现自定的触发器。
 
@@ -686,7 +712,7 @@ input
     .<windowed transformation>(<window function>);
 ```
 
-当使用`GlobalWindow`窗口分配器时，因为窗口的结束时间为`Long.MAX_VALUE`，所以所有的元素都不会迟到。
+当使用`GlobalWindows`窗口分配器时，必然要将元素分配到`GlobalWindow`类型的窗口，而因为这种窗口的结束时间为`Long.MAX_VALUE`，所以所有的元素都不会迟到。
 
 ### Getting late data as a side output
 
