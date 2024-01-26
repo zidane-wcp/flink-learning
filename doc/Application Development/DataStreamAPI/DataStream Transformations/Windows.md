@@ -58,9 +58,40 @@ stream
 
 对于non-keyed stream来说，初始数据流不会被分割成逻辑的数据流，所有的窗口计算在同一个task上执行，就像并发度为1一样。
 
-## Window Operators(待补充)
+## Window Operators(补充)
 
-.process .apply .reduce
+Flink的window模型提供了一些算子（方法），用于为数据流指定不同的窗口操作：
+
+* `window()`，为`KeyedStream`指定窗口分配器，需要传入一个`WindowAssigner`对象，返回`WindowedStream`对象。
+* `windowAll()`，为`DataStream`指定窗口分配器，需要传入一个`WindowAssigner`，返回`AllWindowedStream`对象。
+
+* `reduce()`，为`WindowedStream`或`AllWindowedStream`指定窗口函数，需要传入一个`ReduceFunction`对象，以及另一个可选的`ProcessWindowFunction`对象（如果需要将`ReduceFunction`与`ProcessWindowFunction`结合使用），返回`SingleOutputStreamOperator`对象。
+* `aggregate()`为`WindowedStream`或`AllWindowedStream`指定窗口函数，需要传入一个`AggregationFunction`对象，以及另一个可选的`ProcessWindowFunction`对象（如果需要将`AggregationFunction`与`ProcessWindowFunction`结合使用），返回`SingleOutputStreamOperator`对象。
+* `process()`，为`WindowedStream`或`AllWindowedStream`指定窗口函数，需要传入一个`ProcessWindowFunction`对象，返回`SingleOutputStreamOperator`对象。
+* `apply()`，为`WindowedStream`或`AllWindowedStream`指定窗口函数，需要传入一个`WindowFunction`对象，返回`SingleOutputStreamOperator`对象。注意`WindowFunction`已经过时，所以`apply()`算子基本不用，可用`process()`替换。
+
+* `trigger()`，为`WindowedStream`或`AllWindowedStream`指定触发器，需要传入一个`Trigger`对象，返回`WindowedStream`或`AllWindowedStream`。
+
+* `evictor()`，为`WindowedStream`或`AllWindowedStream`指定驱逐器，需要传入一个`Evictor`对象，返回`WindowedStream`或`AllWindowedStream`。
+* `allowedLateness()`，为`WindowedStream`或`AllWindowedStream`指定允许元素延迟的最大时间，需要传入一个`Time`对象，返回`WindowedStream`或`AllWindowedStream`。
+* `sideOutputLateData()`，为`WindowedStream`或`AllWindowedStream`中迟到的但未删除的元素指定旁路输出的tag，使用该tag可以将这些迟到但未删除的元素收集到一个`DataStream`对象中，需要传入一个`Time`对象，返回`WindowedStream`或`AllWindowedStream`。
+* `getSideOutput()`，从窗口函数输出的数据流`SingleOutputStreamOperator`对象中（所以该算子需要应用在窗口函数之后），获取那些迟到的但未删除的元素，需要传入一个`OutputTag`对象，返回`DataStream`对象。
+
+需要注意的是，以上的`WindowFunction`和`ProcessWindowFunction`基本可以互换使用，例如，`reduce()`也可以传入一个`ReduceFunction`和一个`WindowFunction`对象，用于这俩的结合使用。但是`WindowFunction`是老版本的窗口函数，现在基本都用`ProcessWindowFunction`。
+
+除了以上这些基本算子之外，Flink还提供了一些封装过的窗口函数算子，底层都是基于`reduce()`算子实现，使用`ReduceFunction`进行计算，使用起来更简单方便：
+
+* `max()`，可以应用在`WindowedStream`或`AllWindowedStream`之上，用于返回窗口中拥有指定字段处最大值的元素，可以传入`int positionToMax`或者是`String field`，返回`SingleOutputStreamOperator`数据流对象，该数据流中的元素数据类型与输入元素保持一致（因为底层基于`reduce()`）。
+* `maxBy()`，可以应用在`WindowedStream`或`AllWindowedStream`之上，用于返回窗口中拥有指定字段处最大值的元素，可以传入`int positionToMax`或者是`String field`，返回`SingleOutputStreamOperator`数据流对象，该数据流中的元素数据类型与输入元素保持一致（因为底层基于`reduce()`）。
+* `min()`，与`max()`类似。
+* `minBy()`，与`maxBy`类似。
+* `sum()`，可以应用在`WindowedStream`或`AllWindowedStream`之上，用于返回窗口中元素指定字段的累加值，可以传入`int positionToMax`或者是`String field`，返回`SingleOutputStreamOperator`数据流对象，该数据流中的元素数据类型与输入元素保持一致（因为底层基于`reduce()`）。
+
+需要注意的是，看起来`max()`与`maxBy()`是一样的，他俩确实有很多共同点，例如，因为都是基于`reduce()`算子，所以都是增量聚合；都会根据代码中的逻辑，更新状态中记录的聚合中间值，并输出。但是他俩也有个不同点，就是在更新状态中记录的聚合中间值时，`max()`只会更新指定字段的最大值，正如字面意思所表达，只计算指定字段的最大值，不关注其他字段；而`maxBy()`则会更新整条数据。
+
+另外，`sum()`算子在更新状态中记录的聚合中间值时，是跟`max()`和`min()`一样的，只更新指定字段的累加值，不关注其他字段。
+
+可以结合配套代码，执行并查看结果，更容易理解。
 
 ## Window Assigners
 
