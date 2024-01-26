@@ -41,7 +41,7 @@ stream
 
 另外，你还可以指定一个驱逐器（Evictor），它能在窗口触发后，而且应用窗口函数之前或之后的时间范围内，删除窗口内的元素。
 
-从以上内容可知，Flink中的window一般分为四个组件（components）：
+从以上内容可知，Flink中的window模型包括四个组件（components）：
 
 * Window Assigner：将元素分配到正确的窗口内。
 * Window Function：定义了窗口内元素的处理方式。
@@ -59,6 +59,8 @@ stream
 对于non-keyed stream来说，初始数据流不会被分割成逻辑的数据流，所有的窗口计算在同一个task上执行，就像并发度为1一样。
 
 ## Window Operators(待补充)
+
+.process .apply .reduce
 
 ## Window Assigners
 
@@ -470,21 +472,21 @@ private static class MyProcessWindowFunction
 
 ### Using per-window state in ProcessWindowFunction
 
-对于`ProcessWindowFunction`，除了像*rich function*一样可以访问keyed state，还可以访问窗口函数当前处理的窗口的keyed state，这是两种不同的状态，后者就是*per-window state*。这里涉及到不同的两种窗口：
+对于`ProcessWindowFunction`，除了像*rich function*一样可以访问keyed state，还可以访问窗口函数当前处理的窗口的keyed state，这是两种不同的状态，后者就是*per-window state*，这两种窗口状态分别对应两种不同的逻辑窗口概念：
 
 * 通过`window()`算子定义的窗口，可以是大小为1小时的滚动窗口，也可以是大小为2小时、步长为1小时的滑动窗口。
-* 给定key的已定义窗口的具体实例。比如说，对于user-id xyz，这可能是从12:00到13:00的时间窗口。这是基于窗口定义的，根据作业当前正在处理的key的数量以及事件所处的时间段，将有许多窗口。
+* 给定key的已定义窗口的具体实例（`Window`对象）。比如说，对于user-id xyz，这可能是从12:00到13:00的时间窗口。这是基于窗口定义的，根据作业当前正在处理的key的数量以及事件所处的时间段，将有许多窗口。
 
-per-window state就是以上的第二种窗口的状态。这意味着，如果我们处理的事件中有1000个不同的key，并且当前所处理的元素全部在[12:00, 13:00)这个时间窗口内，那么在该时间内将会有1000个窗口实例，每个窗口实例都拥有自己的per-window state。
+per-window state就是以上的第二种窗口的状态。这意味着，如果我们处理的事件中有1000个不同的key，并且当前所处理的元素全部在[12:00, 13:00)这个时间窗口内，那么在该时间内将会有1000个窗口实例，每个窗口实例都拥有自己的per-window state（这种窗口实例既是*per-key*，又是*per-window*，即每个key的每个逻辑窗口都对应一个窗口实例。）。
 
 `ProcessWindowFunction`抽象类的`process()`方法中的`Context`参数，提供了两个方法用来获取这两种类型的state。
 
-* `globalState()`，用来访问不具体属于某个窗口的状态。
-* `windowState()`，用来访问具体属于某个窗口的状态。
+* `globalState()`，访问*per-key global state*。
+* `windowState()`，访问*per-key and per-window state*，在此简称为*per-window state*。
 
 如果你预测到某个窗口可能会多次触发，那么per-window state的特性就很有用，比如你对迟到的数据进行了迟到的窗口触发，或者当你有一个进行推测性早期触发的自定义触发器时，就可能造成窗口的多次触发。这种情况下，你可以在per-window state中存储上一次触发的信息或者触发的次数。
 
-当使用windowed state时，当窗口被清理掉时，也要清理掉窗口的状态，可以通过`clear()`方法实现。
+正如`ProcessWindowFunction`源码中注释所说，若你是用了*per-window state*，需要实现`ProcessWindowFunction`抽象类中的`clear()`抽象方法，以便窗口在被清理掉时，可以清楚窗口的状态。
 
 > `ProcessWindowFunction`中的状态分析。
 >
@@ -501,11 +503,10 @@ per-window state就是以上的第二种窗口的状态。这意味着，如果�
 >
 > 对于以上三种访问状态的方式，其中`getRuntimeContext().getState()`与`ProcessWindowFunction.Context`中的`globalState()`是等价的，他俩返回的都是全局状态（global state，Flink源码中也叫做per-key state），该状态在具有相同key的所有窗口之间共享。而`ProcessWindowFunction.Context`中的`windowState()`返回的是per-window状态，该状态根据key进行隔离，即使是相同的key。
 >
-> 
 
 ### WindowFunction (Legacy)
 
-`WindowFunction`是`ProcessWindowFunction`的老版本，用`ProcessWindowFunction`的地方可以用`WindowFunction`替换。`WindowFunction`提供了较少的上下文元数据信息，并且不支持某些高级特性，比如per-window keyed state。该接口在未来的版本中将废弃。
+`WindowFunction`通过`apply()`方法来指定，是`ProcessWindowFunction`的老版本，用`ProcessWindowFunction`的地方可以用`WindowFunction`替换。`WindowFunction`提供了较少的上下文元数据信息，并且不支持某些高级特性，比如per-window keyed state。该接口在未来的版本中将废弃。
 
 其源码如下代码段：
 
@@ -538,14 +539,14 @@ input
 
 ## Triggers
 
-窗口触发器（Triggers）决定了窗口（由窗口分配器创建）何时应用窗口函数。每个窗口分配器都有一个默认的触发器，如果默认的触发器不满足需求，也可以使用`trigger(...)`方法指定自定义的触发器。
+窗口触发器（Triggers）通过返回一个`TriggerResult`枚举对象，来决定窗口接下来的行为或动作，比如，触发窗口计算、清理并丢弃窗口。每个窗口分配器都有一个默认的触发器，如果默认的触发器不满足需求，也可以使用`trigger(...)`方法指定自定义的触发器。
 
 `Trigger`抽象类有五个方法，允许触发器对不同的事件作出反应：
 
-* `onElement()`，当每个元素被分配到窗口中时，该方法都会被调用一次。例如在`EventTimeTrigger`触发器中，该方法判断若是watermark超过了当前窗口的结束时间，则返回`TriggerResult.FIRE`，否则返回`TriggerResult.CONTINUE`。
+* `onElement()`，当每个元素被分配到窗口中时，该方法都会被调用一次。例如在`EventTimeTrigger`触发器中，该方法会判断若是watermark超过了当前窗口的结束时间，则返回`TriggerResult.FIRE`，否则返回`TriggerResult.CONTINUE`。
 * `onEventTime()`，当基于event-time的定时器触发时，会调用该方法。
 * `onProcessingTime()`，当基于processing-time的定时器触发时，会调用该方法。
-* `onMerge()`，与有状态触发器（stateful triggers）相关，并在两个触发器对应的窗口合并时，合并它们的状态（trigger state）。但是在该方法执行之前，会先调用`Trigger`中的`canMerge()`方法以确定该触发器是否支持触发器状态的合并，比如会话窗口（sessinon window）在窗口合并时，其触发器状态就是支持合并的。
+* `onMerge()`，与有状态触发器（stateful triggers）相关，在两个触发器对应的窗口合并时，合并它们的触发器的状态（trigger state）。但是在该方法执行之前，会先调用`Trigger`中的`canMerge()`方法以确定该触发器是否支持触发器状态的合并，比如会话窗口（sessinon window）在窗口合并时，其触发器状态就是支持合并的。
 * `clear()`，当该触发器对应的窗口被移除时，会调用该方法，用以清除该触发器持有的状态数据。
 
 以上方法有两点需要注意：
@@ -559,9 +560,9 @@ input
 
 ### Fire and Purge
 
-一旦触发器确定窗口已经准备好进行处理，则触发器就会进行触发。触发器触发后，将返回一个`TriggerResult`枚举对象，`FIRE`或者`FIRE_AND_PURGE`。这是窗口算子（window operator）发出当前窗口结果的信号。对于`ProcessWindowFunction`，所有窗口中的元素都要经过该窗口函数进行处理（可能是在将它们传递给驱逐器之后）；对于`ReduceFunction`和`AggregateFunction`只是将其之前的聚合结果发送出去（因为这俩是增量聚合）。
+一旦触发器确定窗口已经准备好进行处理，则触发器就会进行触发。触发器触发后，将返回一个`TriggerResult`枚举对象，如前文所述。这是窗口算子（window operator）发出当前窗口结果的信号。对于`ProcessWindowFunction`，所有窗口中的元素都要经过该窗口函数进行处理（可能是在将它们传递给驱逐器之后）；对于`ReduceFunction`和`AggregateFunction`只是将其之前的聚合结果发送出去（因为这俩是增量聚合）。
 
-若触发器触发时返回的是`FIRE`枚举对象，则窗口在应用窗口函数后，将保留窗口中的元素；若触发器触发时返回的是`FIRE_AND_PURGE`枚举对象，则窗口在应用窗口函数后，将清除窗口中的元素。默认情况下，Flink内置的窗口触发器在触发时，都会返回`FIRE`枚举对象，不会清理窗口状态。
+若触发器触发时返回的是`FIRE`枚举对象，则窗口在应用窗口函数后，将保留窗口中的元素；若触发器触发时返回的是`FIRE_AND_PURGE`枚举对象，则窗口在应用窗口函数后，将清除窗口中的元素。默认情况下，Flink内置的窗口触发器在触发时，都会返回`FIRE`枚举对象，只触发窗口计算，不会清理窗口中的任何数据（因为Allowed Lateness可能会使得窗口触发器再次触发，只有在Allowed Lateness过期只后才可以彻底清理掉窗口）。
 
 > 清除（Purging）只是移除窗口中的内容，但是关于窗口和触发器状态的潜在元数据信息将会保留。
 
@@ -690,17 +691,21 @@ Flink中的内置驱逐器：
     }
 ```
 
-> 指定驱逐器可以防止预聚合（pre-aggregation），因为窗口中的所有元素在应用窗口函数之前要先经过驱逐器。这意味着拥有驱逐器的窗口将创建更多的状态。
+关于驱逐器有两点需要注意：
 
-Flink不保证窗口中元素的顺序，这意味着，尽管驱逐器可以从窗口的开头移除元素，但这些元素不一定是最先到达或最后到达的元素。
+1. 指定驱逐器可以防止预聚合（pre-aggregation），因为窗口中的所有元素在应用窗口函数之前要先经过驱逐器。这意味着拥有驱逐器的窗口将创建更多的状态。
+
+2. Flink不保证窗口中元素的顺序，这意味着，尽管驱逐器可以从窗口的开头移除元素，但这些元素不一定是最先到达或最后到达的元素。
 
 ## Allowed Lateness
 
-当使用event-time窗口时，元素有可能会延迟到达，即Flink用于跟踪事件时间进度的水印已经超过元素所属窗口的结束时间戳。
+当使用event-time窗口时，元素有可能会延迟到达，即Flink用于跟踪事件时间进度的watermark已经超过元素所属窗口的结束时间戳。
 
-默认情况下，当watermark超过窗口结束时间时，迟到的元素将会被删掉，但是Flink允许为窗口算子指定允许的最大迟到时间（Allowed Lateness），Allowed Lateness指定了元素在被丢弃之前允许的迟到的时间，其默认值为0，在这个时间点之前到达的元素仍会被添加到其所属的窗口中。对于有些触发器来说，Allowed Lateness会导致那些迟到但未删除的元素可能会使得窗户再次启动，比如`EventTimeTrigger`触发器。
+默认情况下，当watermark超过窗口结束时间时，迟到的元素将会被删掉，但是Flink允许为窗口算子指定允许的最大迟到时间（Allowed Lateness），Allowed Lateness指定了元素在被丢弃之前允许的迟到的时间，其默认值为0，在这个时间点之前到达的元素仍会被添加到其所属的窗口中。对于有些触发器来说，Allowed Lateness会导致那些迟到但未删除的元素可能会使得窗口被再次触发，比如`EventTimeTrigger`触发器。
 
-为了实现Allowed Lateness机制，Flink一直保存窗口的状态（哪怕触发器已经触发），直到Allowed Lateness也已经过期。一旦Allowed Lateness过期，Flink将会彻底移除窗口实例及其状态，正如Window Lifecycle小节中所说。
+为了实现Allowed Lateness机制，Flink需要一直保存窗口的状态（哪怕触发器已经触发），直到Allowed Lateness也已经过期。一旦Allowed Lateness过期，Flink将会彻底移除窗口实例及其状态，正如Window Lifecycle小节中所说。
+
+> 之前在了解完窗口的四个基本组件后，发现窗口可能在经过四个组件后仍未被彻底清理，原来窗口的彻底清理是在**Allowed Lateness过期之后**。
 
 ```java
 DataStream<T> input = ...;
@@ -737,17 +742,17 @@ DataStream<T> lateStream = result.getSideOutput(lateOutputTag);
 
 当指定Allowed Lateness大于0时，在watermark超过窗口结束时间后，该窗口实例及其内容都会继续保存。这时，当一个迟到但没删除的元素到达时，可能导致窗口的再次触发，这些迟到的触发称为`late firing`，因为他们是被迟到的时间触发的，与其第一次触发形成对比。对于会话窗口来说，延迟触发可能会进一步导致窗口合并，因为迟到的事件可能正好位于两个之前存在的、还未合并的窗口之间的`gap`之中，使其gap小于指定的最大gap值，就会导致这两个窗口的merge。
 
-由late firing发出的结果应该作为之前结果的更新。意思是说，如果你的数据流包含了同一个窗口函数的多次计算的结果，根据你的应用程序，你需要将这些重复的结果考虑在内，或者是对他们进行去重。
+由late firing发出的结果应该作为之前结果的更新。意思是说，如果你的数据流包含了同一个窗口函数的多次计算的结果，在你的应用程序中你需要将这些重复的结果考虑在内，或者是对他们进行去重。
 
 ## Working with window results
 
-开窗操作的输出结果仍然是一个`DataStream`。关于开窗操作的相关信息不会保存在结果数据流的元素中，所以如果你想保存窗口的元数据信息，你需要在`ProcessWindowFunction`中，将相关信息编码到输出结果的元素中。结果元素中唯一的窗口信息是元素的时间戳，该时间戳被设置为该窗口的允许处理的最大时间戳，即`TimeWindow.getEnd()-1`，因为`TimeWindow.getEnd()`时间戳会被排除在窗口可处理的时间戳之外。需要注意的是，这对于event-time窗口和processing-time窗口都生效。即，在经过开窗操作后，所有的输出元素都将有一个时间戳，可能是event-time时间戳，也可能是processing-time时间戳。对于processing-time窗口来说这没什么特别的，但是对于event-time窗口来说，加上水印与窗口的交互方式，可以实现具有相同窗口大小的连续窗口操作。
+开窗操作的输出结果仍然是一个`DataStream`。关于开窗操作的相关信息不会保存在结果数据流的元素中，所以如果你想保存窗口的元数据信息，你需要在`ProcessWindowFunction`中，将相关信息编码到输出结果的元素中。但是有个例外，结果元素中唯一的窗口信息是元素的时间戳，该时间戳被设置为该窗口的允许处理的最大时间戳，即`TimeWindow.getEnd()-1`，因为`TimeWindow.getEnd()`时间戳会被排除在窗口可处理的时间戳之外。需要注意的是，这对于event-time窗口和processing-time窗口都生效。即，在经过开窗操作后，所有的输出元素都将有一个时间戳，可能是event-time时间戳，也可能是processing-time时间戳。对于processing-time窗口来说这没什么特别的，但是对于event-time窗口来说，加上水印与窗口的交互方式，可以实现具有相同窗口大小的连续窗口操作。
 
 ### Interaction of watermarks and windows
 
 当watermark到达窗口算子时，将会触发两个动作：
 
-* 若窗口的最大时间戳（`getEnd()-1`）小于该watermark，则该watermark会触发窗口计算。
+* 若窗口的最大时间戳（`TimeWindow.getEnd()-1`）小于该watermark，则该watermark会触发窗口计算。
 * watermark按照原样转发给下游算子。
 
 Intuitively, a watermark “flushes” out any windows that would be considered late in downstream operations once they receive that watermark.
