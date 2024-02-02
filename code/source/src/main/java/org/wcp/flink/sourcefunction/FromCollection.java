@@ -20,6 +20,7 @@ package org.wcp.flink.sourcefunction;
 
 import org.apache.flink.streaming.api.datastream.DataStream;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
+import org.wcp.flink.sourcefunction.pojotype.Person;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -37,7 +38,6 @@ import java.util.List;
  * method, change the respective entry in the POM.xml file (simply search for 'mainClass').
  */
 public class FromCollection {
-
     public static void main(String[] args) throws Exception {
         // Sets up the execution environment, which is the main entry point
         // to building Flink applications.
@@ -57,18 +57,17 @@ public class FromCollection {
         env.execute("Flink Java API Skeleton");
     }
 
-    public static class Person {
-        public String name;
-        public Integer age;
-        public Person() {}
-
-        public Person(String name, Integer age) {
-            this.name = name;
-            this.age = age;
-        }
-
-        public String toString() {
-            return this.name.toString() + ": age " + this.age.toString();
-        }
-    }
+//    public static class Person {
+//        public String name;
+//        public Integer age;
+//        public Person() {}
+//
+//        public Person(String name, Integer age) {
+//            this.name = name;
+//            this.age = age;
+//        }
+//        public String toString() {
+//            return this.name + ": age " + this.age.toString();
+//        }
+//    }
 }

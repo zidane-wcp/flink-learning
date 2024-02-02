@@ -101,7 +101,7 @@ under the License.
 			<scope>runtime</scope>
 		</dependency>
 		<dependency>
-			<groupId>org.wcp</groupId>
+			<groupId>org.wcp.flink</groupId>
 			<artifactId>source</artifactId>
 			<version>0.1</version>
 		</dependency>
