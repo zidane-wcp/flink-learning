@@ -28,7 +28,7 @@ stream.keyBy(...).process(new MyProcessFunction());
 
 ## The Process Function
 
-所有的Process Function都是继承自`AbstractRichFunction`，所以也都拥有*Rich Function*的能力。
+所有的Process Function都是继承自`AbstractRichFunction`，所以也都拥有*Rich Function*的能力，可以访问state以及其他RuntimeContext，还可以将数据输出到*旁路输出*。
 
 Flink提供了以下不同的process function：
 
