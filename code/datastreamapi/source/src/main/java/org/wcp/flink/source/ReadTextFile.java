@@ -16,13 +16,10 @@
  * limitations under the License.
  */
 
-package org.wcp.flink.operators.filter;
+package org.wcp.flink.source;
 
-import org.apache.flink.api.common.functions.FilterFunction;
 import org.apache.flink.streaming.api.datastream.DataStream;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
-import org.wcp.flink.source.pojotype.Person;
-
 
 /**
  * Skeleton for a Flink DataStream Job.
@@ -36,27 +33,23 @@ import org.wcp.flink.source.pojotype.Person;
  * <p>If you change the name of the main class (with the public static void main(String[] args))
  * method, change the respective entry in the POM.xml file (simply search for 'mainClass').
  */
-public class PersonPojoFilterFunctionJob {
+public class ReadTextFile {
 
     public static void main(String[] args) throws Exception {
         // Sets up the execution environment, which is the main entry point
         // to building Flink applications.
         final StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment();
 
-        DataStream<Person> flintstones = env.fromElements(
-                new Person("Fred", 36),
-                new Person("Wilma", 35),
-                new Person("Pebbles", 2));
+//        System.out.println("===>>>" + System.getProperty("user.dir"));
+        // 注意，readTextFile默认是处理一次，不会连续监听文件变化，具体看底层调用
+        DataStream<String> lines = env.readTextFile(
+                "file://" +
+                        System.getProperty("user.dir") +
+                        "/datafile/readTextFile.csv");
 
-        DataStream<Person> adults = flintstones.filter(new FilterFunction<Person>() {
-            @Override
-            public boolean filter(Person person) throws Exception {
-                return person.age >= 18;
-            }
-        });
+        lines.print("===>>>");
 
-        adults.print("===>>>");
-
+        // Execute program, beginning computation.
         env.execute("Flink Java API Skeleton");
     }
 }

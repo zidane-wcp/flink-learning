@@ -38,6 +38,23 @@ Data sinks可以消费数据流，将其中的元素输出到文件、socket、�
 
 为了可靠地将流准确地传递到文件系统中，请使用`StreamingFileSink`。此外，通过`addSink()`方法的自定义实现可以参与Flink的checkpoint，实现exactly-once语义。
 
+### Iterator Data Sink
+
+> Iterator Data Sink已经在《DataStreamAPI Overview》章节中介绍过，再次放在这里是为了sink章节的完整性。
+>
+> 需要注意的是，`DataStreamUtils`类是用于实验用途，只能用于debug，且其中大部分方法已经被标记为`@Deprecated`，包括`collect()`方法。
+
+Flink还提供了一个iterator sink来收集DataStream的计算结果，用于测试和调试：
+
+```java
+import org.apache.flink.streaming.experimental.DataStreamUtils;
+
+DataStream<Tuple2<String, Integer>> myResult = ...;
+Iterator<Tuple2<String, Integer>> myOutput = DataStreamUtils.collect(myResult);
+```
+
+
+
 
 
 

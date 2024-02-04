@@ -16,29 +16,25 @@
  * limitations under the License.
  */
 
-package org.wcp.flink.operators.watermark;
+package org.wcp.flink.source.customsource;
 
-import org.apache.flink.api.common.eventtime.WatermarkStrategy;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
 import org.apache.flink.streaming.api.functions.sink.PrintSinkFunction;
-import org.wcp.flink.source.customsource.TaxiRideSourceFunction;
-import org.wcp.flink.source.customsource.pojotype.TaxiRide;
 
-import java.time.Duration;
-
-public class TestWatermark {
+/**
+ * The Ride Cleansing exercise from the Flink training.
+ *
+ * <p>The task of this exercise is to filter a data stream of taxi ride records to keep only rides
+ * that both start and end within New York City. The resulting stream should be printed.
+ */
+public class TaxiRideSourceFunctionJob {
 
     public static void main(String[] args) throws Exception {
 
         StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment();
 
-        WatermarkStrategy<TaxiRide> strategy = WatermarkStrategy
-                .<TaxiRide>forBoundedOutOfOrderness(Duration.ofSeconds(20))
-                .withTimestampAssigner((event, timestamp) -> event.eventTime.getNano());
-
         env
                 .addSource(new TaxiRideSourceFunction())
-                .assignTimestampsAndWatermarks(strategy)
                 .addSink(new PrintSinkFunction<>());
 
         env.execute("Taxi Ride Cleansing");

@@ -21,9 +21,9 @@ mvn archetype:generate                \
   -DarchetypeArtifactId=flink-quickstart-java \
   -DarchetypeVersion=1.15.4 \
   -DgroupId=org.wcp.flink \
-  -DartifactId=datastreamapi\
-  -Dversion=0.1 \
-  -Dpackage=org.wcp.flink \
+  -DartifactId=sink\
+  -Dversion=1.0-SNAPSHOT \
+  -Dpackage=org.wcp.flink.sink \
   -DinteractiveMode=false
 ```
 

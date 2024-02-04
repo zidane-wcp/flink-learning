@@ -185,7 +185,7 @@ public class WindowWordCount {
 nc -lk 9999
 ```
 
-只需输入一些单词，然后按回车键即可输入新单词，这些单词是该程序的输入。
+只需输入一些单词，然后按回车键即可将单词输入到该Flink程序中。
 
 ## Execution Parameters
 
@@ -252,7 +252,7 @@ DataStream<Long> myLongs = env.fromCollection(longIt, Long.class);
 
 ### Iterator Data Sink
 
-Flink还提供了一个sink来收集DataStream的计算结果，用于测试和调试：
+Flink还提供了一个iterator sink来收集DataStream的计算结果，用于测试和调试：
 
 ```java
 import org.apache.flink.streaming.experimental.DataStreamUtils;

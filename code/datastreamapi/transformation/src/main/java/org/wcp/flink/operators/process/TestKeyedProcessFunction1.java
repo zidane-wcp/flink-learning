@@ -28,8 +28,8 @@ import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
 import org.apache.flink.streaming.api.functions.KeyedProcessFunction;
 import org.apache.flink.streaming.api.functions.sink.PrintSinkFunction;
 import org.apache.flink.util.Collector;
-import org.wcp.flink.sourcefunction.customsource.TaxiRideSourceFunction;
-import org.wcp.flink.sourcefunction.customsource.pojotype.TaxiRide;
+import org.wcp.flink.source.customsource.TaxiRideSourceFunction;
+import org.wcp.flink.source.customsource.pojotype.TaxiRide;
 
 import java.time.Duration;
 

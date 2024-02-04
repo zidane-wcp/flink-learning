@@ -26,11 +26,11 @@ import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
 import org.apache.flink.streaming.api.functions.co.RichCoFlatMapFunction;
 import org.apache.flink.streaming.api.functions.sink.PrintSinkFunction;
 import org.apache.flink.util.Collector;
-import org.wcp.flink.sourcefunction.customsource.TaxiFareSourceFunction;
-import org.wcp.flink.sourcefunction.customsource.TaxiRideSourceFunction;
-import org.wcp.flink.sourcefunction.customsource.pojotype.RideAndFare;
-import org.wcp.flink.sourcefunction.customsource.pojotype.TaxiFare;
-import org.wcp.flink.sourcefunction.customsource.pojotype.TaxiRide;
+import org.wcp.flink.source.customsource.TaxiFareSourceFunction;
+import org.wcp.flink.source.customsource.TaxiRideSourceFunction;
+import org.wcp.flink.source.customsource.pojotype.RideAndFare;
+import org.wcp.flink.source.customsource.pojotype.TaxiFare;
+import org.wcp.flink.source.customsource.pojotype.TaxiRide;
 
 /**
  * Java reference implementation for the Stateful Enrichment exercise from the Flink training.

@@ -28,8 +28,8 @@ import org.apache.flink.streaming.api.windowing.assigners.TumblingEventTimeWindo
 import org.apache.flink.streaming.api.windowing.time.Time;
 import org.apache.flink.streaming.api.windowing.windows.TimeWindow;
 import org.apache.flink.util.Collector;
-import org.wcp.flink.sourcefunction.customsource.TaxiFareSourceFunction;
-import org.wcp.flink.sourcefunction.customsource.pojotype.TaxiFare;
+import org.wcp.flink.source.customsource.TaxiFareSourceFunction;
+import org.wcp.flink.source.customsource.pojotype.TaxiFare;
 
 public class TestProcessWindowFunction {
 

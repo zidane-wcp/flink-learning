@@ -16,13 +16,14 @@
  * limitations under the License.
  */
 
-package org.wcp.flink.operators.filter;
+package org.wcp.flink.source;
 
-import org.apache.flink.api.common.functions.FilterFunction;
 import org.apache.flink.streaming.api.datastream.DataStream;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
 import org.wcp.flink.source.pojotype.Person;
 
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * Skeleton for a Flink DataStream Job.
@@ -36,27 +37,23 @@ import org.wcp.flink.source.pojotype.Person;
  * <p>If you change the name of the main class (with the public static void main(String[] args))
  * method, change the respective entry in the POM.xml file (simply search for 'mainClass').
  */
-public class PersonPojoFilterFunctionJob {
-
+public class FromCollection {
     public static void main(String[] args) throws Exception {
         // Sets up the execution environment, which is the main entry point
         // to building Flink applications.
         final StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment();
 
-        DataStream<Person> flintstones = env.fromElements(
-                new Person("Fred", 36),
-                new Person("Wilma", 35),
-                new Person("Pebbles", 2));
+        List<Person> people = new ArrayList<>();
 
-        DataStream<Person> adults = flintstones.filter(new FilterFunction<Person>() {
-            @Override
-            public boolean filter(Person person) throws Exception {
-                return person.age >= 18;
-            }
-        });
+        people.add(new Person("Fred", 37));
+        people.add(new Person("Wilma", 35));
+        people.add(new Person("Pebbles", 4));
 
-        adults.print("===>>>");
+        DataStream<Person> flintstones = env.fromCollection(people);
 
+        flintstones.print("===>>>");
+
+        // Execute program, beginning computation.
         env.execute("Flink Java API Skeleton");
     }
 }

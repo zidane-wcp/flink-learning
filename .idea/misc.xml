@@ -7,6 +7,8 @@
         <option value="$PROJECT_DIR$/pom.xml" />
         <option value="$PROJECT_DIR$/code/datastreamapi/source/pom.xml" />
         <option value="$PROJECT_DIR$/code/datastreamapi/function/pom.xml" />
+        <option value="$PROJECT_DIR$/code/datastreamapi/overview/pom.xml" />
+        <option value="$PROJECT_DIR$/code/datastreamapi/transformation/pom.xml" />
       </list>
     </option>
   </component>

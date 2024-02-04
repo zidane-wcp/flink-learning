@@ -2,7 +2,7 @@ package org.wcp.flink.operators.partitioning;
 
 import org.apache.flink.streaming.api.datastream.DataStream;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
-import org.wcp.flink.sourcefunction.pojotype.Person;
+import org.wcp.flink.source.pojotype.Person;
 
 import java.util.ArrayList;
 import java.util.List;

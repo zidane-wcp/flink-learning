@@ -7,8 +7,10 @@
         <sourceTestOutputDir name="target/generated-test-sources/test-annotations" />
         <outputRelativeToContentRoot value="true" />
         <module name="hello-world" />
+        <module name="overview" />
         <module name="source" />
         <module name="transformation" />
+        <module name="sink" />
       </profile>
     </annotationProcessing>
   </component>
