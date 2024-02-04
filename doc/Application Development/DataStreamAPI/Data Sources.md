@@ -2,7 +2,7 @@ Flink程序通过各种source读取输入的数据，你可以通过`StreamExecu
 
 Flink提供了一些预先实现好的`source function`，你也可以通过实现`SourceFunction`接口实现非并行的source，或者通过实现`ParallelSourceFunction`接口、`RichParallelSourceFunction`接口实现可并行的source。
 
-## Flink predefined sources
+## Flink Predefined Sources
 
 在`StreamExecutionEnvironment`类中，Flink提供了一些预先定义好的source。包括基于文件的、基于socket的、基于集合的以及Flink自定义的。以下只列出四种了，另外还包括`generateSequence` `fromSequence`等等，后续补充。
 
@@ -33,8 +33,6 @@ Flink提供了一些预先实现好的`source function`，你也可以通过实�
 ```bash
 nc -lk 9999
 ```
-
-
 
 ### Collection-based
 

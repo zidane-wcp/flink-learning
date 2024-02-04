@@ -338,7 +338,7 @@ public abstract class ProcessWindowFunction<IN, OUT, KEY, W extends Window> impl
      * @param elements The elements in the window being evaluated.
      * @param out A collector for emitting elements.
      *
-     * @throws Exception The function may throw exceptions to fail the program and trigger recovery.
+     * @throws Exception The operators may throw exceptions to fail the program and trigger recovery.
      */
     public abstract void process(
             KEY key,
@@ -552,7 +552,7 @@ public interface WindowFunction<IN, OUT, KEY, W extends Window> extends Function
    * @param input The elements in the window being evaluated.
    * @param out A collector for emitting elements.
    *
-   * @throws Exception The function may throw exceptions to fail the program and trigger recovery.
+   * @throws Exception The operators may throw exceptions to fail the program and trigger recovery.
    */
   void apply(KEY key, W window, Iterable<IN> input, Collector<OUT> out) throws Exception;
 }
@@ -624,7 +624,7 @@ Flink内置了几个触发器：
 
 ```java
 /**
- * Optionally evicts elements. Called before windowing function.
+ * Optionally evicts elements. Called before windowing operators.
  *
  * @param elements The elements currently in the pane.
  * @param size The current number of elements in the pane.
@@ -634,7 +634,7 @@ Flink内置了几个触发器：
 void evictBefore(Iterable<TimestampedValue<T>> elements, int size, W window, EvictorContext evictorContext);
 
 /**
- * Optionally evicts elements. Called after windowing function.
+ * Optionally evicts elements. Called after windowing operators.
  *
  * @param elements The elements currently in the pane.
  * @param size The current number of elements in the pane.

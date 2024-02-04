@@ -6,15 +6,10 @@
         <sourceOutputDir name="target/generated-sources/annotations" />
         <sourceTestOutputDir name="target/generated-test-sources/test-annotations" />
         <outputRelativeToContentRoot value="true" />
-        <module name="helloworld" />
+        <module name="hello-world" />
         <module name="source" />
-        <module name="frauddetection" />
-        <module name="function" />
+        <module name="transformation" />
       </profile>
     </annotationProcessing>
-    <bytecodeTargetLevel>
-      <module name="flink-learning (1)" target="1.8" />
-      <module name="flink-learning (2)" target="1.8" />
-    </bytecodeTargetLevel>
   </component>
 </project>

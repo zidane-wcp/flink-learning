@@ -133,7 +133,7 @@ import org.apache.flink.util.Collector;
 // the source data stream
 DataStream<Tuple2<String, String>> stream = ...;
 
-// apply the process function onto a keyed stream
+// apply the process operators onto a keyed stream
 DataStream<Tuple2<String, Long>> result = stream
     .keyBy(value -> value.f0)
     .process(new CountWithTimeoutFunction());
@@ -154,7 +154,7 @@ public class CountWithTimestamp {
 public class CountWithTimeoutFunction 
         extends KeyedProcessFunction<Tuple, Tuple2<String, String>, Tuple2<String, Long>> {
 
-    /** The state that is maintained by this process function */
+    /** The state that is maintained by this process operators */
     private ValueState<CountWithTimestamp> state;
 
     @Override
