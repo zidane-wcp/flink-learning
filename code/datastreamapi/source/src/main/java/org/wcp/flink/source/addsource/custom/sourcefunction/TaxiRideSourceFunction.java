@@ -16,10 +16,10 @@
  * limitations under the License.
  */
 
-package org.wcp.flink.source.customsource;
+package org.wcp.flink.source.addsource.custom.sourcefunction;
 
 import org.apache.flink.streaming.api.functions.source.SourceFunction;
-import org.wcp.flink.source.customsource.pojotype.TaxiRide;
+import org.wcp.flink.source.pojotype.TaxiRide;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -32,11 +32,9 @@ import java.util.Random;
  * <p>The stream is produced out-of-order.
  */
 public class TaxiRideSourceFunction implements SourceFunction<TaxiRide> {
-
     public static final int SLEEP_MILLIS_PER_EVENT = 10;
     private static final int BATCH_SIZE = 5;
     private volatile boolean running = true;
-
     @Override
     public void run(SourceContext<TaxiRide> ctx) throws Exception {
 
@@ -78,7 +76,6 @@ public class TaxiRideSourceFunction implements SourceFunction<TaxiRide> {
             Thread.sleep(1000L * 3);
         }
     }
-
     @Override
     public void cancel() {
         running = false;

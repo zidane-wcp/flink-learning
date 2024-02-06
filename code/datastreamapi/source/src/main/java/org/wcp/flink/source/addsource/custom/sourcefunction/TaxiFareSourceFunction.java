@@ -16,11 +16,11 @@
  * limitations under the License.
  */
 
-package org.wcp.flink.source.customsource;
+package org.wcp.flink.source.addsource.custom.sourcefunction;
 
 import org.apache.flink.streaming.api.functions.source.SourceFunction;
-import org.wcp.flink.source.customsource.pojotype.TaxiFare;
-import org.wcp.flink.source.customsource.utils.DataGenerator;
+import org.wcp.flink.source.pojotype.TaxiFare;
+import org.wcp.flink.source.utils.DataGenerator;
 
 import java.time.Duration;
 import java.time.Instant;
@@ -31,7 +31,6 @@ import java.time.Instant;
  * <p>The stream is generated in order.
  */
 public class TaxiFareSourceFunction implements SourceFunction<TaxiFare> {
-
     private volatile boolean running = true;
     private Instant limitingTimestamp = Instant.MAX;
 
@@ -41,12 +40,10 @@ public class TaxiFareSourceFunction implements SourceFunction<TaxiFare> {
         generator.limitingTimestamp = DataGenerator.BEGINNING.plus(duration);
         return generator;
     }
-
     @Override
     public void run(SourceContext<TaxiFare> ctx) throws Exception {
 
         long id = 1;
-
         while (running) {
             TaxiFare fare = new TaxiFare(id);
 
@@ -62,7 +59,6 @@ public class TaxiFareSourceFunction implements SourceFunction<TaxiFare> {
             Thread.sleep(1000L);
         }
     }
-
     @Override
     public void cancel() {
         running = false;

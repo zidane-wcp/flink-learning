@@ -1,3 +1,5 @@
+
+
 Flink 中的 DataStream 程序，可以实现数据流转换（例如，过滤、更新状态、定义窗口、聚合）。
 
 
@@ -261,5 +263,44 @@ DataStream<Tuple2<String, Integer>> myResult = ...;
 Iterator<Tuple2<String, Integer>> myOutput = DataStreamUtils.collect(myResult);
 ```
 
+## The Flat Function
 
+在Flink的很多Transformation Function中，我们会发现除了普通的Function之外，基本每个Function都对应一个Flat Function。例如`MapFunction`，其对应的Flat Function就是`FlatMapFunction`。Flat Function与普通Function相比，其基本功能和特性完全相同，不同点在于，普通Function中的方法是以返回值的方式输出处理结果，而Flat Function是通过收集器的方式收集处理结果。通过收集器，Flat Function对于每个输入，可以输出0个或多个处理结果，而普通Function的输入输出是一对一。
+
+```java
+// MapFunction
+public interface MapFunction<T, O> extends Function, Serializable {
+    O map(T var1) throws Exception;
+}
+
+// FlatMapFunction
+public interface FlatMapFunction<T, O> extends Function, Serializable {
+    void flatMap(T var1, Collector<O> var2) throws Exception;
+}
+```
+
+## The Rich Function
+
+在Flink的很多Function中，我们会发现除了普通的Function之外，基本每个Function都对应一个富函数，即Rich Function。例如`MapFunction`，其对应的富函数就是`RichMapFunction`。
+
+Rich Function都是通过继承`AbstractRichFunction`抽象类实现，与普通Function相比，多了以下两个机制：
+
+* 生命周期：通过`open()`和`close()`两个方法实现，分别控制生命周期的开始与结束。
+* 运行时上下文：通过`setRuntimeContext()`、`getRuntimeContext()`、`getIterationRuntimeContext`三个方法实现，用于访问并控制运行时上下文。
+
+```java
+// MapFunction
+public interface MapFunction<T, O> extends Function, Serializable {
+    O map(T var1) throws Exception;
+}
+
+// RichMapFunction
+public abstract class RichMapFunction<IN, OUT> extends AbstractRichFunction implements MapFunction<IN, OUT> {
+    private static final long serialVersionUID = 1L;
+
+    public RichMapFunction() {
+    }
+    public abstract OUT map(IN var1) throws Exception;
+}
+```
 

@@ -32,8 +32,8 @@ import org.apache.flink.streaming.api.functions.sink.PrintSinkFunction;
 import org.apache.flink.streaming.api.windowing.time.Time;
 import org.apache.flink.util.Collector;
 import org.apache.flink.util.OutputTag;
-import org.wcp.flink.source.customsource.TaxiFareSourceFunction;
-import org.wcp.flink.source.customsource.pojotype.TaxiFare;
+import org.wcp.flink.source.addsource.custom.sourcefunction.TaxiFareSourceFunction;
+import org.wcp.flink.source.pojotype.TaxiFare;
 
 import static org.wcp.flink.operators.process.TestKeyedProcessFunction.PseudoWindow.lateFares;
 

@@ -16,12 +16,12 @@
  * limitations under the License.
  */
 
-package org.wcp.flink.source.customsource.pojotype;
+package org.wcp.flink.source.pojotype;
 
 import org.apache.flink.annotation.VisibleForTesting;
 import org.apache.flink.streaming.runtime.streamrecord.StreamRecord;
-import org.wcp.flink.source.customsource.utils.DataGenerator;
-import org.wcp.flink.source.customsource.utils.GeoUtils;
+import org.wcp.flink.source.utils.DataGenerator;
+import org.wcp.flink.source.utils.GeoUtils;
 
 import javax.annotation.Nullable;
 

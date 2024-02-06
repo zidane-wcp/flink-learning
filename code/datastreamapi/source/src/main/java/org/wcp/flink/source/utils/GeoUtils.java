@@ -16,7 +16,7 @@
  * limitations under the License.
  */
 
-package org.wcp.flink.source.customsource.utils;
+package org.wcp.flink.source.utils;
 
 import java.util.ArrayList;
 import java.util.List;

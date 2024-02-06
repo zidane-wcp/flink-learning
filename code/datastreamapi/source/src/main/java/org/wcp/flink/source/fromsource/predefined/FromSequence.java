@@ -16,7 +16,7 @@
  * limitations under the License.
  */
 
-package org.wcp.flink.source;
+package org.wcp.flink.source.fromsource.predefined;
 
 import org.apache.flink.streaming.api.datastream.DataStream;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
@@ -33,17 +33,18 @@ import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
  * <p>If you change the name of the main class (with the public static void main(String[] args))
  * method, change the respective entry in the POM.xml file (simply search for 'mainClass').
  */
-public class SocketTextStream {
-
+public class FromSequence {
     public static void main(String[] args) throws Exception {
         // Sets up the execution environment, which is the main entry point
         // to building Flink applications.
         final StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment();
 
-        DataStream<String> lines = env.socketTextStream("localhost", 9999);
-        lines.print("===>>>>");
+        env.setParallelism(1);
+        DataStream<Long> flintstones = env.fromSequence(0, 10);
+
+        flintstones.print("===>>>");
 
         // Execute program, beginning computation.
-        env.execute("Flink Java API Skeleton");
+        env.execute("FromSequence Demo");
     }
 }

@@ -21,8 +21,8 @@ package org.wcp.flink.operators.watermark;
 import org.apache.flink.api.common.eventtime.WatermarkStrategy;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
 import org.apache.flink.streaming.api.functions.sink.PrintSinkFunction;
-import org.wcp.flink.source.customsource.TaxiRideSourceFunction;
-import org.wcp.flink.source.customsource.pojotype.TaxiRide;
+import org.wcp.flink.source.addsource.custom.sourcefunction.TaxiRideSourceFunction;
+import org.wcp.flink.source.pojotype.TaxiRide;
 
 import java.time.Duration;
 

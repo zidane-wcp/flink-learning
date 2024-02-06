@@ -16,7 +16,7 @@
  * limitations under the License.
  */
 
-package org.wcp.flink.source;
+package org.wcp.flink.source.addsource.predefined;
 
 import org.apache.flink.streaming.api.datastream.DataStream;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;

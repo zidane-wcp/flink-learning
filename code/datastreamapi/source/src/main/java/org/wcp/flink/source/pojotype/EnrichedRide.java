@@ -1,7 +1,7 @@
-package org.wcp.flink.source.customsource.pojotype;
+package org.wcp.flink.source.pojotype;
 
 
-import org.wcp.flink.source.customsource.utils.GeoUtils;
+import org.wcp.flink.source.utils.GeoUtils;
 
 public class EnrichedRide extends TaxiRide {
     public int startCell;

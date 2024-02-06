@@ -10,7 +10,7 @@ Data sinks可以消费数据流，将其中的元素输出到文件、socket、�
 
 * `writeUsingOutputFormat()/FileOutputFormat`，该方法用于实现自定义文件输出，也是文件输出的基类，`writeAsText()`和`writeAsCsv()`都是对该方法的封装。
 
-* `print()/printToErr()`，将每个元素的`toString()`返回值打印到标准输出（stdout）或标准错误流（stderr）。可选的，可在其参数中指定输出的字符串的前缀。如果并行度大于1，在输出中还将添加执行的线程索引，如下`open()`方法。
+* `print()/printToErr()`，将每个元素的`toString()`返回值打印到标准输出（stdout）或标准错误流（stderr），所以如果如果用print sink时要记得实现元素的`toString()`方法，尤其是PojoType。可选的，可在其参数中指定输出的字符串的前缀。如果并行度大于1，在输出中还将添加执行的线程索引，如下`open()`方法。
 
     ```java
         // PrintSinkOutputWriter<IN>类的open方法

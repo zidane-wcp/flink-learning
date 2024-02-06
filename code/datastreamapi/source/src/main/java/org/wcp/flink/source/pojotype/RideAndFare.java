@@ -16,7 +16,7 @@
  * limitations under the License.
  */
 
-package org.wcp.flink.source.customsource.pojotype;
+package org.wcp.flink.source.pojotype;
 
 import java.io.Serializable;
 

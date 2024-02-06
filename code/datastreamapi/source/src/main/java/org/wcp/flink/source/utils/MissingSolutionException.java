@@ -16,7 +16,7 @@
  * limitations under the License.
  */
 
-package org.wcp.flink.source.customsource.utils;
+package org.wcp.flink.source.utils;
 
 /** Exception denoting a missing solution (results in tests verifying the solution instead). */
 public class MissingSolutionException extends Exception {

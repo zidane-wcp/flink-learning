@@ -24,9 +24,9 @@ import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
 import org.apache.flink.streaming.api.functions.sink.PrintSinkFunction;
 import org.apache.flink.util.Collector;
 import org.wcp.flink.operators.map.RideMapFunctionJob;
-import org.wcp.flink.source.customsource.TaxiRideSourceFunction;
-import org.wcp.flink.source.customsource.pojotype.EnrichedRide;
-import org.wcp.flink.source.customsource.pojotype.TaxiRide;
+import org.wcp.flink.source.addsource.custom.sourcefunction.TaxiRideSourceFunction;
+import org.wcp.flink.source.pojotype.EnrichedRide;
+import org.wcp.flink.source.pojotype.TaxiRide;
 
 public class RideFlatMapFunctionJob {
     public static void main(String[] args) throws Exception {

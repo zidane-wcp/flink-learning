@@ -16,7 +16,7 @@
  * limitations under the License.
  */
 
-package org.wcp.flink.source.customsource;
+package org.wcp.flink.source.addsource.custom.sourcefunction;
 
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
 import org.apache.flink.streaming.api.functions.sink.PrintSinkFunction;
@@ -28,15 +28,12 @@ import org.apache.flink.streaming.api.functions.sink.PrintSinkFunction;
  * that both start and end within New York City. The resulting stream should be printed.
  */
 public class TaxiFareSourceFunctionJob {
-
     public static void main(String[] args) throws Exception {
 
         StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment();
-
         env
                 .addSource(new TaxiFareSourceFunction())
                 .addSink(new PrintSinkFunction<>());
-
         env.execute("Taxi Fare source operators");
     }
 }
